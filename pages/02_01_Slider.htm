@@ -13,13 +13,13 @@
 </head>
 <body>
   <div id="map" class="map"></div>
-  <input id="level" type="range" min="0" max="100" step="1" value="0">
+  <input id="level" type="range" min="-15" max="100" step=".1" value="0">
   <p>Height Level: <span id="output"></span></p>
   <script>
     function flood(pixels, data) {
       const pixel = pixels[0];
       if (pixel[3]) {
-        const height = -10000 + (pixel[0] * 256 * 256 + pixel[1] * 256 + pixel[2]) * 0.1;
+        const height = pixel[0]
         if (height <= data.level) {
           pixel[0] = 134;
           pixel[1] = 203;
@@ -73,7 +73,7 @@
     output.innerText = control.value;
 
     raster.on('beforeoperations', function (event) {
-      event.data.level = control.value;
+      event.data.level = Number(control.value);
     });
   </script>
 </body>
