@@ -3,31 +3,39 @@
 <head>
   <title>Flood Mapping Experiment</title>
   <style>
-  * {
-    box-sizing: border-box;
-  }
-  body {
-    margin: 0;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; /* new */
-  }
-  .map {
-    flex-grow: 1;
-    overflow: auto; /* new */
-  }
-  p {
-    margin: 0;
-  }
-</style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden; /* new */
+    }
+    .map {
+      flex-grow: 1;
+      overflow: auto; /* new */
+    }
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    p {
+      margin: 0;
+    }
+  </style>
   <link rel="stylesheet" href="https://cdn.rawgit.com/openlayers/openlayers.github.io/master/en/v5.3.0/css/ol.css" type="text/css">
   <script src="https://cdn.rawgit.com/openlayers/openlayers.github.io/master/en/v5.3.0/build/ol.js"></script>
 </head>
 <body>
   <div id="map" class="map"></div>
   <input id="level" type="range" min="-15" max="100" step=".1" value="0">
-  <p>Water Level (meters CGVD2013): <span id="output"></span></p>
+    <div class="controls">
+    <p>Water Level (meters CGVD2013): <span id="output"></span></p>
+    <a href="https://github.com/kkmcgg/floodmap">GitHub Repo</a>
+  </div>
   <script>
     function flood(pixels, data) {
       const pixel = pixels[0];
@@ -78,6 +86,17 @@
     });
 
     const control = document.getElementById('level');
+    
+    //deselect things on the page so the slider works correctly
+    control.addEventListener('mousedown', function() {
+  if (document.selection) {
+    document.selection.empty();
+  } else if (window.getSelection) {
+    window.getSelection().removeAllRanges();
+  }
+});
+    
+    
     const output = document.getElementById('output');
     control.addEventListener('input', function () {
       output.innerText = control.value;
@@ -88,6 +107,9 @@
     raster.on('beforeoperations', function (event) {
       event.data.level = Number(control.value);
     });
+    
+    
+    
   </script>
 </body>
 </html>
