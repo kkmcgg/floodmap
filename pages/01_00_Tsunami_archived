@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Maritime Tsunami Risk Flood Map</title>
+    <style>
+          html,
+          body {
+              font-family: sans-serif;
+              padding: 0;
+              margin: 0;
+              height: 100%;
+              width: 100%;
+              min-height: 175px;
+          }
+          .esri-scale-bar__label {
+              text-shadow: 0 0 10px #FFF, 0 0 7px #fff, 0 0 18px #fff;
+
+          }
+          #viewDiv {
+              position: absolute;
+              right: 0;
+              left: 0;
+              top: 0;
+              bottom: 120px;
+              width: 100%;
+          }
+
+          .footer_container {
+              position: absolute;
+              bottom: 0;
+              height: 120px;
+              width: 100%;
+              color: #fff;
+              background-color: #0E3B6F;
+              text-align: center;
+          }
+
+          .esri-scale-bar__ruler {
+              display: flex;
+              flex-wrap: wrap;
+              width: 100%;
+              height: 6px;
+              background-color: black;
+          }
+
+          .esri-popup__position-container {
+              width: 170px;
+          }
+
+          .flood_footer {
+              height: 30px;
+              width: 100%;
+              color: #fff;
+              background-color: #0E3B6F;
+              text-align: center;
+          }
+
+          .flood-slider {
+              padding: 0;
+              height: 10px;
+              width: 85%;
+          }
+
+          .bckgrnd_footer {
+              /*height: 40px;*/
+              width: 95%;
+              color: #fff;
+              background-color: #0E3B6F;
+              text-align: left;
+          }
+
+          #bckgrnd_header {
+              display: inline;
+              padding-left: 20px;
+              padding-right: 10px;
+              margin: 10px;
+          }
+
+          .bckgrnd_radio {
+              display: inline;
+              vertical-align: middle;
+              padding-left: 20px;
+              margin: 0;
+          }
+
+          .bckgrnd_radio_header {
+              display: inline;
+              margin: 0;
+          }
+
+          #basemap {
+              background: rgba(0,0,0, 0.6);
+              width:220px;
+              position: relative;
+              bottom: 115px;
+              z-index: 100;
+              margin: 10px;
+              border: 2px solid black;
+              color: #ffffff;
+              text-align: left;
+              margin: 10px;
+              float: right;
+          }
+
+          .flood-slider {
+              height:18px;
+          }
+
+          a {
+              color: white;
+              cursor: pointer;
+          }
+		  #loadingImg {
+			position: absolute;
+			right: 20px;
+			top: 20px;
+			z-index: 100;
+		}
+    </style>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.3/esri/css/main.css">
+    <script src="https://js.arcgis.com/4.3/"></script>
+    <script>
+        require([
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/layers/ImageryLayer",
+            "esri/layers/MapImageLayer",
+            "esri/layers/support/RasterFunction",
+            "esri/layers/support/DimensionalDefinition",
+            "esri/layers/support/MosaicRule",
+            "esri/core/watchUtils",
+            "esri/Basemap",
+            "esri/PopupTemplate",
+            "esri/widgets/ScaleBar",
+            "esri/widgets/Home",
+            "esri/geometry/Extent",
+            "dojo/domReady!"
+        ],
+        function (Map, MapView, ImageryLayer, MapImageLayer, RasterFunction, DimensionalDefinition,
+            MosaicRule, watchUtils, Basemap, PopupTemplate, ScaleBar, Home, Extent, on) {
+            var pixelBlock, factor, minValue, maxValue;
+
+            // URLs for imagery layers
+            //var DEMURL = "//agrgims.cogs.nscc.ca/arcgis/rest/services/mcfm/Maritime30mDEM_NoCache/ImageServer";
+            var DEMURL = '//agrgims.cogs.nscc.ca:6443/arcgis/rest/services/ElevationModels/HRDEM_dtm_1m_utm20/ImageServer'
+			var hillshadeURL = "//agrgims.cogs.nscc.ca/arcgis/rest/services/mcfm/R_Maritime30mDEM_WGS84WC2/ImageServer";
+            var baseCSRLayerURL = "//agrgims.cogs.nscc.ca/arcgis/rest/services/mcfm/Maritime30mCSR/MapServer";
+            var roadLayerURL = "//agrgims.cogs.nscc.ca/arcgis/rest/services/mcfm/Maritime_Roads/MapServer";
+
+            // Pixel filter function for symbolizing SRTM DEM based on flood level 
+            function colorize(pixelData) {
+                if (pixelData === null || pixelData.pixelBlock === null || pixelData.pixelBlock.pixels === null) {
+                    return;
+                }
+
+                pixelBlock = pixelData.pixelBlock;
+                var pixels = pixelBlock.pixels;
+                var numPixels = pixelBlock.width * pixelBlock.height;
+                var elevationBand = pixels[0];
+                var rBand = [];
+                var gBand = [];
+                var bBand = [];
+                var aBand = [];
+                var maskCells = [];
+                var maskVal = document.querySelector(".flood-slider").value;
+
+                for (i = 0; i < numPixels; i++) {
+                    var elevationValue = elevationBand[i];
+                    var depth = maskVal - elevationValue;
+                        rBand[i] = 0;
+                        gBand[i] = -4.32 * depth + 255;
+                        bBand[i] = 255;
+
+                        if (elevationValue > maskVal || elevationValue <0) {
+                        maskCells[i] = 0;
+                    }
+                    else {
+                        maskCells[i] = 1;
+                    }
+                }
+                pixelData.pixelBlock.pixels = [rBand, gBand, bBand];
+                pixelData.pixelBlock.pixelType = "U8"; 
+                pixelData.pixelBlock.mask = maskCells;
+                if (maskVal != 1) {
+                    document.querySelector(".flood").innerText = maskVal + " metres";
+                } else {
+                    document.querySelector(".flood").innerText = maskVal + " metre";
+                }
+            }
+
+            // Define map layers
+            var layer = new ImageryLayer({
+				//url: "//agrgims.cogs.nscc.ca/arcgis/rest/services/mcfm/Maritime30mDEM/ImageServer",
+                url: DEMURL,
+                pixelFilter: colorize,
+                opacity: 0.4,
+            });
+
+            var blrf = new RasterFunction({
+                functionName: "GrayscaleRelief"
+                //functionName: "CSR"
+                //functionName: "ShadedRelief"
+                //variableName: "Raster"
+                //functionArguments: csrArguments
+            });
+
+            var baseHillshadeLayer = new ImageryLayer({
+                //url: DEMURL,
+                url: hillshadeURL,
+                renderingRule: blrf
+            });
+
+            var baseCSRLayer = new MapImageLayer({
+                url: baseCSRLayerURL,
+                visible: false
+            });
+
+            var roadLayer = new MapImageLayer({
+                url: roadLayerURL
+            });
+
+            // Set content of popup when querying flooded area
+            popupContent = function (value, key, data) {
+                var depth = document.querySelector(".flood-slider").value - data["Raster.ItemPixelValue"];
+                if (depth >= 0) {
+                    return depth + " m";
+                } else {
+                    return "0 m";
+                }
+            };        
+           
+            layer.popupTemplate = new PopupTemplate({
+                title: "Flood Depth",
+                content: "{query:popupContent}",
+                overwriteActions: true,
+            });
+
+            /*var multipartColorRamp = {
+              "type": "multipart",
+              "colorRamps": [
+                {
+                  "type": "algorithmic",
+                  "fromColor": [255,174,27,94],
+                  "toColor": [255,60,30,100],
+                  "algorithm": "esriHSVAlgorithm"
+                },
+                {
+                  "type": "algorithmic",
+                  "fromColor": [255,60,30,100],
+                  "toColor": [255,150,100,50],
+                  "algorithm": "esriHSVAlgorithm"
+                },
+                {
+                  "type": "algorithmic",
+                  "fromColor": [255,150,100,50],
+                  "toColor": [255,44,99,99],
+                  "algorithm": "esriCIELabAlgorithm"
+                },
+                {
+                  "type": "algorithmic",
+                  "fromColor": [255,44,99,99],
+                  "toColor": [255,0,100,50],
+                  "algorithm": "esriHSVAlgorithm"
+                },
+                {
+                  "type": "algorithmic",
+                  "fromColor": [255,0,100,47],
+                  "toColor": [255,23,88,41],
+                  "algorithm": "esriCIELabAlgorithm"
+                },
+                {
+                  "type": "algorithmic",
+                  "fromColor": [255,23,88,41],
+                  "toColor": [255,-1,0,67],
+                  "algorithm": "esriCIELabAlgorithm"
+                },
+                {
+                  "type": "algorithmic",
+                  "fromColor": [255,-1,0,67],
+                  "toColor": [255,300,1,100],
+                  "algorithm": "esriCIELabAlgorithm"
+                }
+              ]
+            };
+
+            var csrArguments = {};
+            csrArguments.Azimuth = 315;
+            csrArguments.Altitude = 45;
+            csrArguments.ZFactor = 1;
+            csrArguments.ColorRamp = multipartColorRamp;
+            csrArguments.Colormap = [[1,255,255,255],[2,253,255,255],[3,250,255,255],[4,248,255,255],[5,245,255,255],[6,243,254,255],[7,240,254,255],[8,237,254,255],[9,235,253,255],[10,232,253,255],
+                                    [11,229,253,255],[12,227,252,255],[13,224,252,255],[14,221,252,255],[15,219,251,255],[16,216,251,255],[17,213,251,255],[18,211,250,255],[19,208,250,255],[20,205,250,255],
+                                    [21,203,249,255],[22,200,249,255],[23,197,249,255],[24,195,249,255],[25,192,248,255],[26,189,248,255],[27,187,248,255],[28,184,247,255],[29,181,247,255],[30,179,247,255],
+                                    [31,176,246,255],[32,173,246,255],[33,171,246,255],[34,168,245,255],[35,166,245,255],[36,163,245,255],[37,160,244,255],[38,158,244,255],[39,155,244,255],[40,152,243,255],
+                                    [41,150,243,255],[42,147,243,255],[43,144,243,255],[44,142,242,255],[45,139,242,255],[46,136,242,255],[47,134,241,255],[48,131,241,255],[49,128,241,255],[50,126,240,255],
+                                    [51,123,240,255],[52,120,240,255],[53,118,239,255],[54,115,239,255],[55,112,239,255],[56,110,238,255],[57,107,238,255],[58,104,238,255],[59,102,237,255],[60,99,237,255],
+                                    [61,97,237,255],[62,94,237,255],[63,91,236,255],[64,89,236,255],[65,86,236,255],[66,85,235,251],[67,85,234,247],[68,84,234,243],[69,83,233,239],[70,82,233,235],[71,81,232,231],
+                                    [72,80,232,227],[73,79,231,223],[74,78,230,219],[75,78,230,215],[76,77,229,211],[77,76,229,207],[78,75,228,203],[79,74,228,199],[80,73,227,195],[81,72,226,191],[82,71,226,187],
+                                    [83,71,225,183],[84,70,225,179],[85,69,224,175],[86,68,224,171],[87,67,223,167],[88,66,222,162],[89,65,222,158],[90,65,221,154],[91,64,221,150],[92,63,220,146],[93,62,220,142],
+                                    [94,61,219,138],[95,60,218,134],[96,59,218,130],[97,58,217,126],[98,58,217,122],[99,57,216,118],[100,56,216,114],[101,55,215,110],[102,54,214,106],[103,53,214,102],[104,52,213,98],
+                                    [105,51,213,94],[106,51,212,90],[107,50,212,86],[108,49,211,82],[109,48,210,78],[110,47,210,74],[111,46,209,70],[112,45,209,66],[113,44,208,62],[114,44,208,58],[115,43,207,54],[116,42,206,50],
+                                    [117,41,206,46],[118,40,205,42],[119,39,205,38],[120,38,204,34],[121,37,204,30],[122,37,203,26],[123,36,202,22],[124,35,202,18],[125,34,201,14],[126,33,201,10],[127,32,200,6],[128,31,200,2],
+                                    [129,32,199,0],[130,34,200,0],[131,36,200,0],[132,38,200,0],[133,40,200,0],[134,43,200,0],[135,45,200,0],[136,47,201,0],[137,49,201,0],[138,51,201,0],[139,53,201,0],[140,55,201,0],[141,57,201,0],
+                                    [142,60,202,0],[143,62,202,0],[144,64,202,0],[145,66,202,0],[146,68,202,0],[147,70,203,0],[148,72,203,0],[149,74,203,0],[150,77,203,0],[151,79,203,0],[152,81,203,0],[153,83,204,0],[154,85,204,0],
+                                    [155,87,204,0],[156,89,204,0],[157,91,204,0],[158,93,204,0],[159,96,205,0],[160,98,205,0],[161,100,205,0],[162,102,205,0],[163,104,205,0],[164,106,205,0],[165,108,206,0],[166,110,206,0],
+                                    [167,113,206,0],[168,115,206,0],[169,117,206,0],[170,119,206,0],[171,121,207,0],[172,123,207,0],[173,125,207,0],[174,127,207,0],[175,130,207,0],[176,132,207,0],[177,134,208,0],[178,136,208,0],
+                                    [179,138,208,0],[180,140,208,0],[181,142,208,0],[182,144,208,0],[183,147,209,0],[184,149,209,0],[185,151,209,0],[186,153,209,0],[187,155,209,0],[188,157,209,0],[189,159,210,0],[190,161,210,0],
+                                    [191,163,210,0],[192,166,210,0],[193,167,208,0],[194,169,205,0],[195,170,202,0],[196,171,199,0],[197,173,197,0],[198,174,194,0],[199,176,191,0],[200,177,188,0],[201,178,185,0],[202,180,182,0],
+                                    [203,181,179,0],[204,183,177,0],[205,184,174,0],[206,185,171,0],[207,187,168,0],[208,188,165,0],[209,190,162,0],[210,191,159,0],[211,192,157,0],[212,194,154,0],[213,195,151,0],[214,197,148,0],
+                                    [215,198,145,0],[216,200,142,0],[217,201,139,0],[218,202,137,0],[219,204,134,0],[220,205,131,0],[221,207,128,0],[222,208,125,0],[223,209,122,0],[224,211,119,0],[225,212,116,0],[226,214,114,0],
+                                    [227,215,111,0],[228,216,108,0],[229,218,105,0],[230,219,102,0],[231,221,99,0],[232,222,96,0],[233,223,94,0],[234,225,91,0],[235,226,88,0],[236,228,85,0],[237,229,82,0],[238,230,79,0],
+                                    [239,232,76,0],[240,233,74,0],[241,235,71,0],[242,236,68,0],[243,237,65,0],[244,239,62,0],[245,240,59,0],[246,242,56,0],[247,243,54,0],[248,245,51,0],[249,246,48,0],[250,247,45,0],[251,249,42,0],
+                                    [252,250,39,0],[253,252,36,0],[254,253,34,0],[255,254,31,0],[256,255,28,0]];
+
+            var blrf = new RasterFunction();
+            blrf.functionName = "ShadedRelief";
+            blrf.functionArguments = csrArguments;*/
+
+            // Create map and view, define map settings
+            var map = new Map({
+                basemap: "hybrid",
+                //layers: [baseHillshadeLayer, baseCSRLayer, roadLayer, layer]
+            });
+          
+            var view = new MapView({
+                container: "viewDiv",
+                map: map,
+                zoom: 8,
+                center: [-63, 45],
+                popup: {
+                    actions: []
+                },
+            });
+
+            view.constraints = {
+                minScale: 250000000,  
+                rotationEnabled: false  // Disables map rotation
+            };
+
+            var scale = new ScaleBar({
+                view: view,
+                unit: "dual"
+            });
+
+            // Add layers to map when view is created and add home button
+            view.then(function () {
+
+                map.layers.addMany([baseHillshadeLayer, baseCSRLayer, roadLayer, layer]);
+                var homeWidget = new Home({
+                    view: view
+                });
+                view.ui.add(homeWidget, "top-left");
+                view.ui.add(scale, {
+                    position: "bottom-left"
+                });                
+            });
+
+            view.popup.dockOptions.buttonEnabled = false;
+			
+			view.watch("updating",function(updating){
+				console.info("View Updating: ", updating);
+				if( updating===true){
+					document.getElementById("loadingImg").style.visibility = 'visible';
+					} else {
+					document.getElementById("loadingImg").style.visibility = 'hidden';
+					}
+			});
+ 
+               // Redraw flood layer when slider is changed
+            var slide = document.querySelector(".flood-slider");
+
+            slide.oninput = function () {
+                layer.redraw();
+                view.popup.visible=false;
+            };
+
+            // Switch between base layers and basemap
+            var radio = document.querySelectorAll('input[type="radio"][name="backdrop"]');
+            for (var i = 0; i < radio.length; i++) {
+                radio[i].onclick = function () {
+                    if (this.value == 'hillshade') {
+                        map.layers.items[0].visible = true;
+                        map.layers.items[1].visible = false;
+                    }
+                    else if (this.value == 'colourshadedrelief') {
+                        map.layers.items[0].visible = false;
+                        map.layers.items[1].visible = true;
+                    }
+                    else if (this.value == 'Basemap') {
+                        map.layers.items[0].visible = false;
+                        map.layers.items[1].visible = false;
+                    }
+                };
+            }
+        });
+    </script>
+
+</head>
+
+<body>
+	<img id='loadingImg' src='loading-dark.gif' />
+    <div id="viewDiv">
+        <div id="basemap">
+                    <h4 id="bckgrnd_header">Flood map background: </h4>
+                    <br />
+                    <input class="bckgrnd_radio" type="radio" name="backdrop" value="hillshade" checked="checked">
+                    <h5 class="bckgrnd_radio_header">Grayscale Hillshade</h5>
+                    <br />
+                    <input class="bckgrnd_radio" type="radio" name="backdrop" value="colourshadedrelief">
+                    <h5 class="bckgrnd_radio_header">Colour Shaded Relief</h5>
+                    <br />
+                    <input class="bckgrnd_radio" type="radio" name="backdrop" value="Basemap">
+                    <h5 class="bckgrnd_radio_header">Satellite</h5>
+            </div>
+        </div>
+    <div class="footer_container">
+        <div class="flood_footer">
+            <h3>Tsunami Flood Level: <span class="flood"></span> </h3>
+        </div>
+        <input class="flood-slider" type="range" min="0" max="60" step="1" value="10">
+        <div class="links">
+            <a href="../">Return to Coastal Flooding Home</a>
+            <br />
+            <a href="../docs/tsunami_user_doc.pdf"  target="_blank">View Documentation</a>
+        </div>
+    </div>
+    
+</body>
+</html>
