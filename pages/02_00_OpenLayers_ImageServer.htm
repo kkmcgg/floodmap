@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>FloodMap Experiment</title>
+    <link rel="stylesheet" href="https://cdn.rawgit.com/openlayers/openlayers.github.io/master/en/v5.3.0/css/ol.css" type="text/css">
+    <style>
+      .map {
+        height: 400px;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map" class="map"></div>
+    <script src="https://cdn.rawgit.com/openlayers/openlayers.github.io/master/en/v5.3.0/build/ol.js"></script>
+    <script>
+      var DEMURL = '//agrgims.cogs.nscc.ca:6443/arcgis/rest/services/ElevationModels/HRDEM_dtm_1m_utm20/ImageServer';
+
+      var baseMapLayer = new ol.layer.Tile({
+        source: new ol.source.OSM()
+      });
+
+      var demLayer = new ol.layer.Tile({
+        source: new ol.source.TileArcGISRest({
+          url: DEMURL
+        })
+      });
+
+      var novaScotiaCoordinate = ol.proj.fromLonLat([-63.7457, 44.6820]);
+
+      var map = new ol.Map({
+        layers: [baseMapLayer, demLayer],
+        target: 'map',
+        view: new ol.View({
+          center: novaScotiaCoordinate,
+          zoom: 7
+        }),
+      });
+    </script>
+  </body>
+</html>
