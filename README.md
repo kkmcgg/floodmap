@@ -18,6 +18,7 @@ FloodMap comes equipped with several features designed to enhance user interacti
 ## Getting Started
 
 To utilize FloodMap, simply load the provided HTML file in a web browser. Please ensure you have a stable internet connection to load all necessary resources and map layers.
+its live at: [kkmcgg.github.io/floodmap/](kkmcgg.github.io/floodmap/)
 
 ## Contributing
 
