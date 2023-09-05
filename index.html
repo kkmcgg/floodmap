@@ -11,11 +11,11 @@
       height: 100vh;
       display: flex;
       flex-direction: column;
-      overflow: hidden; /* new */
+      overflow: hidden;
     }
     .map {
       flex-grow: 1;
-      overflow: auto; /* new */
+      overflow: auto;
     }
     .controls {
       display: flex;
@@ -57,9 +57,8 @@
 
     const elevation = new ol.source.TileArcGISRest({
       url: DEMURL,
-      // crossOrigin: 'anonymous',
-        crossOrigin: '',
-     interpolate: false,
+      crossOrigin: '',
+      interpolate: false,
     });
 
     const raster = new ol.source.Raster({
@@ -70,14 +69,22 @@
       }
     });
 
+    // New basemap layer
+    const baseMapLayer = new ol.layer.Tile({
+      source: new ol.source.XYZ({
+        url: 'https://tiles.c-map.com/wmts/cmt_noaa_hrb_shaded_relief/webmercator/{z}/{x}/{y}.jpeg'
+      })
+    });
+
     const map = new ol.Map({
       target: 'map',
       layers: [
+        baseMapLayer,  // Added new basemap layer
         new ol.layer.Tile({
-          source: new ol.source.OSM()
+          source: new ol.source.OSM(),opacity: 0.1,
         }),
         new ol.layer.Image({
-          opacity: 0.6,
+          opacity: 0.7,
           source: raster
         })
       ],
@@ -89,15 +96,13 @@
 
     const control = document.getElementById('level');
     
-    //deselect things on the page so the slider works correctly
     control.addEventListener('mousedown', function() {
-  if (document.selection) {
-    document.selection.empty();
-  } else if (window.getSelection) {
-    window.getSelection().removeAllRanges();
-  }
-});
-    
+      if (document.selection) {
+        document.selection.empty();
+      } else if (window.getSelection) {
+        window.getSelection().removeAllRanges();
+      }
+    });
     
     const output = document.getElementById('output');
     control.addEventListener('input', function () {
@@ -109,7 +114,6 @@
     raster.on('beforeoperations', function (event) {
       event.data.level = Number(control.value);
     });
-    
     
   </script>
 </body>
