@@ -38,6 +38,7 @@
             <label><input type="checkbox" id="osmCheckbox" checked> OSM Layer</label>
             <label><input type="checkbox" id="floodLayerCheckbox" checked> Flood Layer</label>
             <label><input type="checkbox" id="wmsLayerCheckbox" checked> NONNA10 Layer</label>
+            <label><input type="checkbox" id="seaHeightLayerCheckbox" checked> Sea Surface Height Layer</label>
         </div>
         <input id="level" type="range" min="-15" max="100" step=".1" value="0">
         <p>Water Level (meters CGVD2013): <span id="output"></span> -- WARNING NOT TO BE TRUSTED! -- </p>
@@ -104,7 +105,7 @@
                 baseMapLayer,  // Base map layer
                 new ol.layer.Tile({
                     source: new ol.source.OSM(),
-                    opacity: 0.1,
+                    opacity: 0.5,
                 }),
                 new ol.layer.Image({
                     opacity: 0.7,
@@ -117,6 +118,35 @@
                 zoom: 8
             })
         });
+        
+        // Define the Sea Surface Height WMS layer
+const seaHeightWMSLayer = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'https://geo.weather.gc.ca/geomet',
+        params: {
+            'LAYERS': 'WCPS_1km_SeaSfcHeight',
+            'FORMAT': 'image/png',
+            'TRANSPARENT': 'true',
+            'SERVICE': 'WMS',
+            'VERSION': '1.3.0',
+            'REQUEST': 'GetMap',
+            'STYLES': 'SEA_SURFACE_HEIGHT-TINY',
+            'TIME': '2024-04-15T17:00:00Z',
+            'CRS': 'EPSG:3857'
+        },
+        serverType: 'geoserver',
+        crossOrigin: 'anonymous'
+    }),
+    visible: true
+});
+
+// Updated layers array to include the new Sea Surface Height layer
+map.addLayer(seaHeightWMSLayer);
+
+// Add event listener for the new checkbox
+document.getElementById('seaHeightLayerCheckbox').addEventListener('change', function() {
+    seaHeightWMSLayer.setVisible(this.checked);
+});
 
         const control = document.getElementById('level');
     
